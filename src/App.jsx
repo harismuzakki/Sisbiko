@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // Firebase dan Ikon akan diimpor oleh Vite saat build
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import {
   UserIcon,
@@ -31,7 +31,7 @@ const firebaseConfig = typeof __firebase_config !== 'undefined'
       apiKey: "AIzaSyDbSF7gMYvbEqoZ9fRdfSO-GEVSwsT6RDQ",
       authDomain: "sisbiko.firebaseapp.com",
       projectId: "sisbiko",
-      storageBucket: "sisbiko.appspot.com",
+      storageBucket: "sisbiko.firebasestorage.app",
       messagingSenderId: "234431614670",
       appId: "1:234431614670:web:6e90f091d82d77d294ca9f"
     };
@@ -43,11 +43,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const publicCollectionPath = `/artifacts/${appId}/public/data/`;
-
-// --- PERBAIKAN LOGO DI SINI ---
-const logoDepanUrl = "https://i.ibb.co/1Y5zPHc/Logo.png";
-const logoDashboardUrl = "https://i.ibb.co/Tx49ztw/Logo-Sekolah.png";
-
+const logoDepanUrl = "https://i.ibb.co/vCGXT29/Logo.png";
+const logoDashboardUrl = "https://i.ibb.co/wFS5D4d/Logo-Sekolah.png";
 
 // --- Komponen Animasi Loading ---
 const LoadingScreen = ({ message }) => (
@@ -113,6 +110,8 @@ export default function App() {
           console.error("Gagal autentikasi awal:", error);
           setIsAuthReady(true);
         }
+      } else {
+        setIsAuthReady(true);
       }
     };
     initialSignIn();
@@ -132,13 +131,17 @@ export default function App() {
         await deleteDoc(userDocRef);
       }
       await signOut(auth);
+      setUserRole(null);
+      setUserName(null);
     } catch (error) {
       console.error("Logout failed:", error);
       showMessage('Gagal keluar, silakan coba lagi.', 'bg-red-500');
     } finally {
       setTimeout(() => {
         setIsLoggingOut(false);
-        signInAnonymously(auth).catch(err => console.error("Gagal sign-in anonim otomatis:", err));
+        if (!auth.currentUser) {
+            signInAnonymously(auth).catch(err => console.error("Gagal sign-in anonim otomatis:", err));
+        }
       }, 1500);
     }
   };
@@ -181,6 +184,7 @@ export default function App() {
           handleLogout={handleLogout}
           showMessage={showMessage}
           showConfirmModal={showConfirmModal}
+          isAuthReady={isAuthReady}
         />
       ) : (
         <RoleSelectionScreen showMessage={showMessage} user={user} />
@@ -189,7 +193,7 @@ export default function App() {
   );
 }
 
-const AuthenticatedApp = ({ user, userRole, userName, handleLogout, showMessage, showConfirmModal }) => {
+const AuthenticatedApp = ({ user, userRole, userName, handleLogout, showMessage, showConfirmModal, isAuthReady }) => {
     const [activeMenu, setActiveMenu] = useState('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
@@ -201,6 +205,8 @@ const AuthenticatedApp = ({ user, userRole, userName, handleLogout, showMessage,
     const [allAttendance, setAllAttendance] = useState([]);
 
     useEffect(() => {
+        if (!isAuthReady || !user) return;
+
         const collections = {
             students: setAllStudents,
             teachers: setAllTeachers,
@@ -219,7 +225,7 @@ const AuthenticatedApp = ({ user, userRole, userName, handleLogout, showMessage,
         );
 
         return () => unsubscribers.forEach(unsub => unsub());
-    }, [user.uid]);
+    }, [user, isAuthReady]);
 
     return (
         <div className="flex min-h-screen bg-gray-50 font-sans">
@@ -434,11 +440,108 @@ const renderContent = (activeMenu, userRole, userName, user, showMessage, showCo
 
 // --- Komponen Halaman Spesifik ---
 
+const LoginScreen = ({ role, onLoginSuccess, onBack, showMessage }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleLoginSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+
+        if (role === 'admin') {
+            if (username === 'Admin' && password === 'Sman87654321*') {
+                setTimeout(() => {
+                    onLoginSuccess('admin', 'Admin Utama');
+                }, 500);
+            } else {
+                setTimeout(() => {
+                    showMessage('Username atau password salah.', 'bg-red-500');
+                    setIsLoading(false);
+                }, 500);
+            }
+            return;
+        }
+
+        const teachersRef = collection(db, `${publicCollectionPath}teachers`);
+        const q = query(teachersRef, where("nip", "==", username), where("password", "==", password), where("role", "==", role));
+        
+        try {
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const teacherData = querySnapshot.docs[0].data();
+                const classData = role === 'walikelas' ? teacherData.class || null : null;
+                onLoginSuccess(role, teacherData.name, classData);
+            } else {
+                 showMessage('NIP atau password salah, atau peran tidak sesuai.', 'bg-red-500');
+            }
+        } catch (error) {
+            console.error("Error logging in: ", error);
+            showMessage('Terjadi kesalahan saat login.', 'bg-red-500');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans p-4">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform transition-transform duration-300">
+                <img src={logoDepanUrl} alt="SISBIKO Logo" className="h-20 mx-auto mb-6" />
+                <h2 className="text-2xl font-bold text-gray-800 mb-2 capitalize">Login {role}</h2>
+                <p className="text-gray-600 mb-8">
+                    {role === 'admin' ? 'Silakan masukkan kredensial Admin.' : 'Gunakan NIP sebagai username.'}
+                </p>
+                <form onSubmit={handleLoginSubmit} className="space-y-6 text-left">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                           {role === 'admin' ? 'Username' : 'NIP'}
+                        </label>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Password</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            required
+                        />
+                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={isLoading}
+                        className="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 disabled:bg-blue-300"
+                    >
+                        {isLoading ? 'Memproses...' : 'Login'}
+                    </button>
+                </form>
+                <button 
+                    onClick={onBack} 
+                    disabled={isLoading}
+                    className="mt-6 text-sm text-gray-600 hover:text-gray-800 disabled:text-gray-400"
+                >
+                    Kembali ke menu utama
+                </button>
+            </div>
+        </div>
+    );
+};
+
+
 const RoleSelectionScreen = ({ showMessage, user }) => {
+    const [selectedRoleForLogin, setSelectedRoleForLogin] = useState(null);
+
     const handleLoginAs = async (selectedRole, name, classData = null) => {
       if (!user) {
-          showMessage('Sesi autentikasi tidak ditemukan, silakan muat ulang halaman.', 'bg-red-500');
-          return;
+        showMessage('Sesi autentikasi tidak ditemukan, silakan muat ulang halaman.', 'bg-red-500');
+        return;
       }
       const userDocRef = doc(db, `${publicCollectionPath}users`, user.uid);
       try {
@@ -448,32 +551,44 @@ const RoleSelectionScreen = ({ showMessage, user }) => {
           name: name,
           class: classData,
         });
-        showMessage(`Berhasil login sebagai ${selectedRole}!`, 'bg-green-500');
       } catch (e) {
         console.error("Gagal menetapkan peran pengguna: ", e);
         showMessage('Gagal login, silakan coba lagi.', 'bg-red-500');
       }
     };
-  
+
+    if (selectedRoleForLogin) {
+        return (
+            <LoginScreen
+                role={selectedRoleForLogin}
+                onLoginSuccess={handleLoginAs}
+                onBack={() => setSelectedRoleForLogin(null)}
+                showMessage={showMessage}
+            />
+        );
+    }
+ 
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans p-4">
         <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform hover:scale-105 transition-transform duration-300">
-          <img src={logoDepanUrl} alt="SISBIKO Logo" className="h-20 mx-auto mb-6" />
+          <img src={logoDepanUrl} alt="SISBIKO Logo" className="h-40 mx-auto mb-6" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Selamat Datang di SISBIKO</h2>
-          <p className="text-gray-600 mb-8">Silakan pilih peran Anda untuk masuk ke sistem.</p>
+           <p className="text-gray-600 mb-8 text-lg">
+               <span className="text-blue-600 font-bold">S</span>istem <span className="text-blue-600 font-bold">I</span>nforma<span className="text-blue-600 font-bold">s</span>i dan <span className="text-blue-600 font-bold">B</span>imb<span className="text-blue-600 font-bold">i</span>ngan <span className="text-blue-600 font-bold">Ko</span>nseling
+           </p>
           <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => handleLoginAs('admin', 'Admin Utama')} className="py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300">Admin</button>
-            <button onClick={() => handleLoginAs('kepalasekolah', 'Kepala Sekolah')} className="py-3 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-300">Kepala Sekolah</button>
-            <button onClick={() => handleLoginAs('walikelas', 'Budi Santoso', 'XII IPA 1')} className="py-3 px-4 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition duration-300">Wali Kelas</button>
-            <button onClick={() => handleLoginAs('guru', 'Siti Aminah')} className="py-3 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-300">Guru</button>
-            <button onClick={() => handleLoginAs('gurubk', 'Rina Wijaya')} className="py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-300">Guru BK</button>
-            <button onClick={() => handleLoginAs('gurupiket', 'Agus Setiawan')} className="py-3 px-4 bg-orange-500 text-white font-semibold rounded-lg shadow-md hover:bg-orange-600 transition duration-300">Guru Piket</button>
+            <button onClick={() => setSelectedRoleForLogin('admin')} className="py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300">Admin</button>
+            <button onClick={() => setSelectedRoleForLogin('kepalasekolah')} className="py-3 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-300">Kepala Sekolah</button>
+            <button onClick={() => setSelectedRoleForLogin('walikelas')} className="py-3 px-4 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition duration-300">Wali Kelas</button>
+            <button onClick={() => setSelectedRoleForLogin('guru')} className="py-3 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-300">Guru</button>
+            <button onClick={() => setSelectedRoleForLogin('gurubk')} className="py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-300">Guru BK</button>
+            <button onClick={() => setSelectedRoleForLogin('gurupiket')} className="py-3 px-4 bg-orange-500 text-white font-semibold rounded-lg shadow-md hover:bg-orange-600 transition duration-300">Guru Piket</button>
           </div>
         </div>
       </div>
     );
 };
-  
+ 
 const GeneralDashboard = ({ allStudents, allTeachers, allViolations, allAchievements, allViolationRules, userRole, userName }) => {
     
     const studentPoints = allStudents.map(student => {
@@ -868,7 +983,7 @@ const DatabaseGuru = ({ allTeachers, showMessage, showConfirmModal, isReadOnly =
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-              <input type="password" id="password" name="password" value={formData.password} placeholder={editingTeacher ? 'Kosongkan jika tidak diubah' : ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+              <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} placeholder={editingTeacher ? 'Kosongkan jika tidak diubah' : ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
             </div>
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700">Peran Sebagai</label>
@@ -892,7 +1007,7 @@ const DatabaseGuru = ({ allTeachers, showMessage, showConfirmModal, isReadOnly =
             </div>
              <p className="md:col-span-2 text-xs text-gray-500 mt-2">
                 **Penting**: Fitur password ini hanya untuk penyimpanan data. Sistem login saat ini tidak menggunakan password ini.
-            </p>
+              </p>
           </form>
         </div>
       )}

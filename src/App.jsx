@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+// Firebase dan Ikon akan diimpor oleh Vite saat build
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -30,7 +31,7 @@ const firebaseConfig = typeof __firebase_config !== 'undefined'
       apiKey: "AIzaSyDbSF7gMYvbEqoZ9fRdfSO-GEVSwsT6RDQ",
       authDomain: "sisbiko.firebaseapp.com",
       projectId: "sisbiko",
-      storageBucket: "sisbiko.firebasestorage.app",
+      storageBucket: "sisbiko.appspot.com",
       messagingSenderId: "234431614670",
       appId: "1:234431614670:web:6e90f091d82d77d294ca9f"
     };
@@ -42,8 +43,11 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const publicCollectionPath = `/artifacts/${appId}/public/data/`;
-const logoDepanUrl = "https://i.ibb.co/9g3v2Y4/Logo.png";
-const logoDashboardUrl = "https://i.ibb.co/9g3v2Y4/Logo.png";
+
+// --- PERBAIKAN LOGO DI SINI ---
+const logoDepanUrl = "https://i.ibb.co/1Y5zPHc/Logo.png";
+const logoDashboardUrl = "https://i.ibb.co/Tx49ztw/Logo-Sekolah.png";
+
 
 // --- Komponen Animasi Loading ---
 const LoadingScreen = ({ message }) => (
@@ -864,7 +868,7 @@ const DatabaseGuru = ({ allTeachers, showMessage, showConfirmModal, isReadOnly =
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-              <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} placeholder={editingTeacher ? 'Kosongkan jika tidak diubah' : ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+              <input type="password" id="password" name="password" value={formData.password} placeholder={editingTeacher ? 'Kosongkan jika tidak diubah' : ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
             </div>
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700">Peran Sebagai</label>

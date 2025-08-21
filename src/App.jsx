@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-// Firebase dan Ikon akan diimpor oleh Vite saat build
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
@@ -43,8 +42,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const publicCollectionPath = `/artifacts/${appId}/public/data/`;
-const logoDepanUrl = "https://i.ibb.co/vCGXT29/Logo.png";
-const logoDashboardUrl = "https://i.ibb.co/wFS5D4d/Logo-Sekolah.png";
+const logoDepanUrl = "https://i.ibb.co/vCGXT29h/Logo.png";
+const logoDashboardUrl = "https://i.ibb.co/wFS5D4d2/Logo-Sekolah.png";
 
 // --- Komponen Animasi Loading ---
 const LoadingScreen = ({ message }) => (
@@ -187,7 +186,7 @@ export default function App() {
           isAuthReady={isAuthReady}
         />
       ) : (
-        <RoleSelectionScreen showMessage={showMessage} user={user} />
+        <RoleSelectionScreen showMessage={showMessage} user={user} isAuthReady={isAuthReady} />
       )}
     </>
   );
@@ -535,7 +534,7 @@ const LoginScreen = ({ role, onLoginSuccess, onBack, showMessage }) => {
 };
 
 
-const RoleSelectionScreen = ({ showMessage, user }) => {
+const RoleSelectionScreen = ({ showMessage, user, isAuthReady }) => {
     const [selectedRoleForLogin, setSelectedRoleForLogin] = useState(null);
 
     const handleLoginAs = async (selectedRole, name, classData = null) => {
@@ -567,28 +566,28 @@ const RoleSelectionScreen = ({ showMessage, user }) => {
             />
         );
     }
- 
+  
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans p-4">
         <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform hover:scale-105 transition-transform duration-300">
           <img src={logoDepanUrl} alt="SISBIKO Logo" className="h-40 mx-auto mb-6" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Selamat Datang di SISBIKO</h2>
            <p className="text-gray-600 mb-8 text-lg">
-               <span className="text-blue-600 font-bold">S</span>istem <span className="text-blue-600 font-bold">I</span>nforma<span className="text-blue-600 font-bold">s</span>i dan <span className="text-blue-600 font-bold">B</span>imb<span className="text-blue-600 font-bold">i</span>ngan <span className="text-blue-600 font-bold">Ko</span>nseling
-           </p>
+                <span className="text-blue-600 font-bold">S</span>istem <span className="text-blue-600 font-bold">I</span>nforma<span className="text-blue-600 font-bold">s</span>i dan <span className="text-blue-600 font-bold">B</span>imb<span className="text-blue-600 font-bold">i</span>ngan <span className="text-blue-600 font-bold">Ko</span>nseling
+            </p>
           <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => setSelectedRoleForLogin('admin')} className="py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300">Admin</button>
-            <button onClick={() => setSelectedRoleForLogin('kepalasekolah')} className="py-3 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-300">Kepala Sekolah</button>
-            <button onClick={() => setSelectedRoleForLogin('walikelas')} className="py-3 px-4 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition duration-300">Wali Kelas</button>
-            <button onClick={() => setSelectedRoleForLogin('guru')} className="py-3 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-300">Guru</button>
-            <button onClick={() => setSelectedRoleForLogin('gurubk')} className="py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-300">Guru BK</button>
-            <button onClick={() => setSelectedRoleForLogin('gurupiket')} className="py-3 px-4 bg-orange-500 text-white font-semibold rounded-lg shadow-md hover:bg-orange-600 transition duration-300">Guru Piket</button>
+            <button onClick={() => setSelectedRoleForLogin('admin')} disabled={!isAuthReady} className="py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Admin</button>
+            <button onClick={() => setSelectedRoleForLogin('kepalasekolah')} disabled={!isAuthReady} className="py-3 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Kepala Sekolah</button>
+            <button onClick={() => setSelectedRoleForLogin('walikelas')} disabled={!isAuthReady} className="py-3 px-4 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Wali Kelas</button>
+            <button onClick={() => setSelectedRoleForLogin('guru')} disabled={!isAuthReady} className="py-3 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Guru</button>
+            <button onClick={() => setSelectedRoleForLogin('gurubk')} disabled={!isAuthReady} className="py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Guru BK</button>
+            <button onClick={() => setSelectedRoleForLogin('gurupiket')} disabled={!isAuthReady} className="py-3 px-4 bg-orange-500 text-white font-semibold rounded-lg shadow-md hover:bg-orange-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Guru Piket</button>
           </div>
         </div>
       </div>
     );
 };
- 
+  
 const GeneralDashboard = ({ allStudents, allTeachers, allViolations, allAchievements, allViolationRules, userRole, userName }) => {
     
     const studentPoints = allStudents.map(student => {
